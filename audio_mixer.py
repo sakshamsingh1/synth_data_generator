@@ -15,7 +15,7 @@ class AudioMixer(object):
             ):
         self._recpath2020 = params['noisepath']
         self._rooms_paths2020 = ['01_bomb_shelter','02_gym','03_pb132_paatalo_classroom2','04_pc226_paatalo_office',
-                                  '05_sa203_sahkotalo_lecturehall','06_sc203_sahkotalo_classroom2',
+                                  '05_sa203_sahkotalo_lecturehall','06_sc203_sahkotalo_classroom2','07_se201_sahkotalo_classroom',
                                   '08_se203_sahkotalo_classroom','09_tb103_tietotalo_lecturehall',
                                   '10_tc352_tietotalo_meetingroom']
         self._nb_rooms2020 = len(self._rooms_paths2020)
