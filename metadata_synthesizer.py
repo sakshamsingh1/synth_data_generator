@@ -42,6 +42,7 @@ class MetadataSynthesizer(object):
         self._rnd_generator = np.random.default_rng()
         
         self._rirdata = db_config._rirdata
+        self._measinfo = db_config._measinfo
         self._nb_classes = len(self._classnames)
         self._nb_speeds = len(self._mixture_setup['speed_set'])
         self._nb_snrs = len(self._mixture_setup['snr_set'])
@@ -55,6 +56,7 @@ class MetadataSynthesizer(object):
         self._mixtures = []
         foldlist = []
         rirdata2room_idx = {1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 8: 6, 9: 7, 10: 8} # room numbers in the rirdata array
+        rirdata2room_measinfo = {1: 'bomb_shelter', 2: 'gym', 3: 'pb132', 4: 'pc226', 5: 'sa203', 6: 'sc203', 8: 'se203', 9: 'tb103', 10: 'tc352'} # room numbers in the rirdata array
 
         for nfold in range(self._mixture_setup['nb_folds']):
             print('Generating metadata for fold {}'.format(str(nfold+1)))
@@ -94,18 +96,48 @@ class MetadataSynthesizer(object):
                 nroom = rooms_nf[nr]
                 print('Room {} \n'.format(nroom+1))              
                 n_traj = np.shape(self._rirdata[rirdata2room_idx[nroom]][0][2])[0] #number of trajectories
+                n_traj_measinfo = np.shape(self._measinfo[rirdata2room_measinfo[nroom]]['distances'])[-1] #number of trajectories
+                assert n_traj == n_traj_measinfo
                 traj_doas = []
+                traj_dist = []
                 
                 for ntraj in range(n_traj):
                     n_rirs = np.sum(self._rirdata[rirdata2room_idx[nroom]][0][3][ntraj,:])
                     n_heights = np.sum(self._rirdata[rirdata2room_idx[nroom]][0][3][ntraj,:]>0)
+                    n_heights_measinfo = np.shape(self._measinfo[rirdata2room_measinfo[nroom]]['heights'])[-1]
+                    assert n_heights == n_heights_measinfo
                     all_doas = np.zeros((n_rirs, 3))
+                    all_dist = np.zeros((n_rirs, 1))
                     n_rirs_accum = 0
                     flip = 0
                     
                     for nheight in range(n_heights):
                         n_rirs_nh = self._rirdata[rirdata2room_idx[nroom]][0][3][ntraj,nheight]
                         doa_xyz = self._rirdata[rirdata2room_idx[nroom]][0][2][ntraj,nheight][0]
+                        trajectory_type = self._measinfo[rirdata2room_measinfo[nroom]]['trajectory_type']
+                        height_delta = self._measinfo[rirdata2room_measinfo[nroom]]['heights'][0,nheight] - 1.2 # the microphone height is assumed to be 1.2
+                        ndoas = doa_xyz.shape[0]
+                        #print('trajectory_type:',trajectory_type)
+                        if trajectory_type == 'circular':
+                            dist_xy = self._measinfo[rirdata2room_measinfo[nroom]]['distances'][0,ntraj]
+                            distances = np.sqrt(dist_xy**2 + height_delta**2)*np.ones((ndoas,1)) 
+                            #print('distance xy:',dist_xy)
+                            #print('height delta:',height_delta)
+                            #print('distances:',distances)
+                        else: # assuming it's a straight line
+                            pse = self._measinfo[rirdata2room_measinfo[nroom]]['distances'][...,ntraj] # path start and end
+                            pse[:,-1] = height_delta
+                            paths = np.array([np.linspace(i,j,ndoas) for i,j in zip(pse[0],pse[1])]).T
+                            distances = np.sqrt(np.sum(np.square(paths),axis=1,keepdims=True))
+                            #print('paths:',paths.shape)
+                            #print('distances:',distances)
+                            #print('path start end :', pse)
+                            #print('height delta:', height_delta)
+                        #print(doa_xyz)
+                        #print('room name:',rirdata2room_measinfo[nroom])
+                        #print(self._measinfo[rirdata2room_measinfo[nroom]]['trajectories'][ntraj])
+                        #print(doa_xyz.shape)
+                        #input()
                         #   stack all doas of trajectory together
                         #   flip the direction of each second height, so that a
                         #   movement can jump from the lower to the higher smoothly and
@@ -113,13 +145,16 @@ class MetadataSynthesizer(object):
                         if flip:
                             nb_doas = np.shape(doa_xyz)[0]
                             all_doas[n_rirs_accum + np.arange(n_rirs_nh), :] = doa_xyz[np.flip(np.arange(nb_doas)), :]
+                            all_dist[n_rirs_accum + np.arange(n_rirs_nh), :] = distances[np.flip(np.arange(nb_doas)), :]
                         else:
                             all_doas[n_rirs_accum + np.arange(n_rirs_nh), :] = doa_xyz
+                            all_dist[n_rirs_accum + np.arange(n_rirs_nh), :] = distances
                         
                         n_rirs_accum += n_rirs_nh
                         flip = not flip
                         
                     traj_doas.append(all_doas)
+                    traj_dist.append(all_dist)
             
                 # start layering the mixtures for the specific room
                 sample_counter = 0
@@ -134,7 +169,7 @@ class MetadataSynthesizer(object):
                     event_counter = 0
                     nth_mixture = {'files': np.array([]), 'class': np.array([]), 'event_onoffsets': np.array([]),
                                    'sample_onoffsets': np.array([]), 'trajectory': np.array([]), 'isMoving': np.array([]), 'isFlippedMoving': np.array([]),
-                                   'speed': np.array([]), 'rirs': [], 'doa_azel': np.array([],dtype=object)}
+                                   'speed': np.array([]), 'rirs': [], 'doa_azel': np.array([],dtype=object), 'doa_dist': np.array([],dtype=object)}
                     nth_mixture['room'] = nroom
                     nth_mixture['snr'] = self._mixture_setup['snr_set'][self._rnd_generator.integers(0,self._nb_snrs)]
                     
@@ -316,10 +351,12 @@ class MetadataSynthesizer(object):
                             if nl == 0 and layer==0:
                                 nth_mixture['event_onoffsets'] = np.array([[time_idx/10., (time_idx+event_duration_nl)/10.]])
                                 nth_mixture['doa_azel'] = [cart2sph(traj_doas[ev_traj][riridx,:])]
+                                nth_mixture['doa_dist'] = [traj_dist[ev_traj][riridx,:])]
                                 nth_mixture['sample_onoffsets'] = [sample_onoffsets]
                             else:
                                 nth_mixture['event_onoffsets'] = np.vstack((nth_mixture['event_onoffsets'], np.array([time_idx/10., (time_idx+event_duration_nl)/10.])))
                                 nth_mixture['doa_azel'].append(cart2sph(traj_doas[ev_traj][riridx,:]))
+                                nth_mixture['doa_dist'].append(traj_dist[ev_traj][riridx,:])
                                 nth_mixture['sample_onoffsets'].append(sample_onoffsets)
                                          
                             nth_mixture['files'] = np.append(nth_mixture['files'], foldlist_nf['audiofile'][event_nl])
@@ -346,13 +383,16 @@ class MetadataSynthesizer(object):
                     nth_mixture['rirs'] = np.array(nth_mixture['rirs'],dtype=object)
                     nth_mixture['rirs'] = nth_mixture['rirs'][sort_idx]
                     new_doas = np.zeros(len(sort_idx),dtype=object)
+                    new_dist = np.zeros(len(sort_idx),dtype=object)
                     new_sample_onoffsets = np.zeros(len(sort_idx),dtype=object)
                     upd_idx = 0
                     for idx in sort_idx:
                         new_doas[upd_idx] = nth_mixture['doa_azel'][idx].T
+                        new_dist[upd_idx] = nth_mixture['doa_dist'][idx].T
                         new_sample_onoffsets[upd_idx] = nth_mixture['sample_onoffsets'][idx]
                         upd_idx += 1
                     nth_mixture['doa_azel'] = new_doas
+                    nth_mixture['doa_dist'] = new_dist
                     nth_mixture['sample_onoffsets'] = new_sample_onoffsets
                 
                     #accumulate mixtures for each room
@@ -391,7 +431,7 @@ class MetadataSynthesizer(object):
                 nb_mixtures = len(self._mixtures[nfold][nr]['mixture'])
                 per_room_mixtures = []
                 for nmix in range(nb_mixtures):
-                    mixture = {'classid': np.array([]), 'trackid': np.array([]), 'eventtimetracks': np.array([]), 'eventdoatimetracks': np.array([])}
+                    mixture = {'classid': np.array([]), 'trackid': np.array([]), 'eventtimetracks': np.array([]), 'eventdoatimetracks': np.array([]), 'eventdistimetracks': np.array([])}
                     mixture_nm = self._mixtures[nfold][nr]['mixture'][nmix]
                     event_classes = mixture_nm['class']
                     event_states = mixture_nm['isMoving']
@@ -411,11 +451,13 @@ class MetadataSynthesizer(object):
                     # store a timeline for each event
                     eventtimetracks = np.zeros((self._nb_frames, nb_events))
                     eventdoatimetracks = np.nan*np.ones((self._nb_frames, 2, nb_events))
+                    eventdistimetracks = np.nan*np.ones((self._nb_frames, 1, nb_events))
 
                     #prepare metadata for synthesis
                     for nev in range(nb_events):
                         event_onoffset = mixture_nm['event_onoffsets'][nev,:]*10
                         doa_azel = np.round(mixture_nm['doa_azel'][nev])
+                        doa_dist = np.round(mixture_nm['doa_dist'][nev],decimals=2)
                         #zero the activity according to perceptual onsets/offsets
                         sample_onoffsets = mixture_nm['sample_onoffsets'][nev]
                         ev_idx = np.arange(event_onoffset[0], event_onoffset[1]+0.1,dtype=int)
@@ -437,6 +479,7 @@ class MetadataSynthesizer(object):
                                 eventtimetracks[ev_idx, nev] = activity_mask
                                 eventdoatimetracks[ev_idx[activity_mask.astype(bool)],0,nev] = np.ones(np.sum(activity_mask==1))*doa_azel[0,0]
                                 eventdoatimetracks[ev_idx[activity_mask.astype(bool)],1,nev] = np.ones(np.sum(activity_mask==1))*doa_azel[0,1]
+                                eventdistimetracks[ev_idx[activity_mask.astype(bool)],0,nev] = np.ones(np.sum(activity_mask==1))*doa_dist[0,0]
                             except IndexError:
                                  excess_idx = len(np.argwhere(ev_idx >= self._nb_frames))
                                  ev_idx = ev_idx[:-excess_idx]
@@ -445,6 +488,7 @@ class MetadataSynthesizer(object):
                                  eventtimetracks[ev_idx, nev] = activity_mask
                                  eventdoatimetracks[ev_idx[activity_mask.astype(bool)],0,nev] = np.ones(np.sum(activity_mask==1))*doa_azel[0,0]
                                  eventdoatimetracks[ev_idx[activity_mask.astype(bool)],1,nev] = np.ones(np.sum(activity_mask==1))*doa_azel[0,1]
+                                 eventdistimetracks[ev_idx[activity_mask.astype(bool)],0,nev] = np.ones(np.sum(activity_mask==1))*doa_dist[0,0]
 
                         else:
                             # moving event
@@ -454,6 +498,7 @@ class MetadataSynthesizer(object):
                             try:
                                 eventtimetracks[ev_idx,nev] = activity_mask
                                 eventdoatimetracks[ev_idx[activity_mask.astype(bool)],:,nev] = doa_azel[activity_mask.astype(bool),:]
+                                eventdistimetracks[ev_idx[activity_mask.astype(bool)],:,nev] = doa_dist[activity_mask.astype(bool),:]
                             except IndexError:
                                 excess_idx = len(np.argwhere(ev_idx >= self._nb_frames))
                                 ev_idx = ev_idx[:-excess_idx]
@@ -461,11 +506,13 @@ class MetadataSynthesizer(object):
                                     activity_mask = activity_mask[0:len(ev_idx)]
                                 eventtimetracks[ev_idx,nev] = activity_mask
                                 eventdoatimetracks[ev_idx[activity_mask.astype(bool)],:,nev] = doa_azel[activity_mask.astype(bool),:]
+                                eventdistimetracks[ev_idx[activity_mask.astype(bool)],:,nev] = doa_dist[activity_mask.astype(bool),:]
 
                     mixture['classid'] = event_classes
                     mixture['trackid'] = np.arange(0,nb_events)
                     mixture['eventtimetracks'] = eventtimetracks
                     mixture['eventdoatimetracks'] = eventdoatimetracks
+                    mixture['eventdistimetracks'] = eventdistimetracks
                     
                     for nf in range(self._nb_frames):
                         # find active events
@@ -552,7 +599,8 @@ class MetadataSynthesizer(object):
                                 
                                 azim = int(metadata_nm['eventdoatimetracks'][nf,0,active_events][na][0])
                                 elev = int(metadata_nm['eventdoatimetracks'][nf,1,active_events][na][0])
-                                metadata_writer.writerow([nf,classidx,trackidx,azim,elev])
+                                dist = int(metadata_nm['eventdistimetracks'][nf,0,active_events][na][0])
+                                metadata_writer.writerow([nf,classidx,trackidx,azim,elev,dist])
                     file_id.close()
                                 
                                 

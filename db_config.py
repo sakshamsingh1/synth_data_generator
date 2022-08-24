@@ -10,6 +10,7 @@ class DBConfig(object):
             ):
         self._rirpath = params['rirpath']
         self._mixturepath = params['mixturepath']
+        self._measinfo = self._load_measinfo()
         self._rirdata = self._load_rirdata()
         self._nb_folds = params['nb_folds']
         self._rooms2fold = params['rooms2fold']
@@ -63,6 +64,48 @@ class DBConfig(object):
             self._class_gaines = []
            
     
+    def _load_measinfo(self):
+        
+        # load measinfo
+        measinfomat = scipy.io.loadmat(self._rirpath + '/measinfo.mat')['measinfo']
+        
+        measinfo = {}
+        # define a room number
+        for room_num in range(9):
+            print('')
+            # get room name
+            room_name = measinfomat['room'][room_num][0][0]
+            print(room_name)
+            measinfo[room_name] = {}
+
+            # get room trajectories
+            trajectories = [str(t[0]) for t in measinfomat['trajectories'][room_num][0][0]]
+            print(trajectories)
+            measinfo[room_name]['trajectories'] = trajectories
+
+            # get trajectory type
+            trajectory_type = (measinfomat['trajectoryType'][room_num][0][0])
+            print(trajectory_type)
+            measinfo[room_name]['trajectory_type'] = trajectory_type
+
+            # get distances
+            distances = np.array([t for t in measinfomat['distances'][room_num][0]])
+            print(distances)
+            measinfo[room_name]['distances'] = distances
+
+            # get heights
+            heights = np.array([t for t in measinfomat['heights'][room_num][0]])
+            print(heights)
+            measinfo[room_name]['heights'] = heights
+
+            # get mic positions
+            mic_position = np.array(measinfomat['micPosition'][room_num][0])
+            print(mic_position)
+            measinfo[room_name]['mic_position'] = mic_position
+
+        return measinfo
+
+
     def _load_rirdata(self):
         matdata = scipy.io.loadmat(self._rirpath + '/rirdata.mat')
         rirdata = matdata['rirdata']['room'][0][0]
