@@ -351,7 +351,7 @@ class MetadataSynthesizer(object):
                             if nl == 0 and layer==0:
                                 nth_mixture['event_onoffsets'] = np.array([[time_idx/10., (time_idx+event_duration_nl)/10.]])
                                 nth_mixture['doa_azel'] = [cart2sph(traj_doas[ev_traj][riridx,:])]
-                                nth_mixture['doa_dist'] = [traj_dist[ev_traj][riridx,:])]
+                                nth_mixture['doa_dist'] = [traj_dist[ev_traj][riridx,:]]
                                 nth_mixture['sample_onoffsets'] = [sample_onoffsets]
                             else:
                                 nth_mixture['event_onoffsets'] = np.vstack((nth_mixture['event_onoffsets'], np.array([time_idx/10., (time_idx+event_duration_nl)/10.])))
