@@ -40,13 +40,13 @@ def get_params(argv='1'):
 
     elif argv == '4': ###### FSD50k DATA
         params['db_name'] = 'fsd50k'
-        params['rirpath'] = '/scratch/sk8974/experiments/dsynth/data/util_data//TAU-SRIR_DB'
-        params['mixturepath'] = '/scratch/sk8974/experiments/dsynth/data/util_data/gen_synth_data_noise_script_change'
+        params['rirpath'] = '/scratch/sk8974/experiments/dsynth/data/util_data/TAU-SRIR_DB'
+        params['mixturepath'] = '/scratch/sk8974/experiments/dsynth/data/util_data/gen_synth_dist'
         params['noisepath'] = '/scratch/sk8974/experiments/dsynth/data/util_data/TAU-SNoise_DB'
         params['db_path'] = '/scratch/sk8974/experiments/dsynth/data/util_data/fsdk_upd'
         params['active_classes'] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
         params['max_polyphony'] = 2
-        params['obj_path'] = 'dcase22_updated_obj.pkl'
+        params['obj_path'] = 'dcase22_updated_obj_dist.pkl'
         
     else:
         print('ERROR: unknown argument {}'.format(argv))
