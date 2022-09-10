@@ -2,6 +2,7 @@ import sys
 import numpy as np
 from db_config import DBConfig
 from metadata_synthesizer import MetadataSynthesizer
+import metadata_synthesizer_old
 from audio_synthesizer import AudioSynthesizer
 from audio_mixer import AudioMixer
 import pickle
@@ -15,7 +16,7 @@ from generation_parameters import get_params
 
 
 # use parameter set defined by user
-task_id = '4'
+task_id = '5'
 
 params = get_params(task_id)
     
@@ -29,7 +30,11 @@ db_config = pickle.load(db_handler)
 db_handler.close()
     
 #create mixture synthesizer class
-noiselessSynth = MetadataSynthesizer(db_config, params, 'target_noiseless')
+noiselessSynth = None
+if params['old_meta_synth']:
+    noiselessSynth = metadata_synthesizer_old.MetadataSynthesizer(db_config, params, 'target_noiseless')
+else:
+    noiselessSynth = MetadataSynthesizer(db_config, params, 'target_noiseless')
     
 #create mixture targets
 mixtures_target, mixture_setup_target, foldlist_target = noiselessSynth.create_mixtures()

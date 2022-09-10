@@ -20,6 +20,7 @@ def get_params(argv='1'):
         event_time_per_layer = 40., #in seconds (should be less than mixture_duration)
         audio_format = 'both', # 'foa' (First Order Ambisonics) or 'mic' (four microphones) or 'both'
         obj_path = 'db_config_fsd.obj',
+        old_meta_synth = False,
             )
         
 
@@ -47,7 +48,18 @@ def get_params(argv='1'):
         params['active_classes'] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
         params['max_polyphony'] = 2
         params['obj_path'] = 'dcase22_updated_obj_dist.pkl'
-        
+
+    elif argv == '5': ###### FSD50k DATA
+        params['db_name'] = 'fsd50k'
+        params['rirpath'] = '/scratch/sk8974/experiments/dsynth/data/util_data/TAU-SRIR_DB'
+        params['mixturepath'] = '/scratch/sk8974/experiments/dsynth/data/util_data/gen_synth_maxPol_1'
+        params['noisepath'] = '/scratch/sk8974/experiments/dsynth/data/util_data/TAU-SNoise_DB'
+        params['db_path'] = '/scratch/sk8974/experiments/dsynth/data/util_data/fsdk_upd'
+        params['active_classes'] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        params['max_polyphony'] = 1
+        params['obj_path'] = 'dcase22_updated_obj.pkl'
+        params['old_meta_synth'] = True
+
     else:
         print('ERROR: unknown argument {}'.format(argv))
         exit()

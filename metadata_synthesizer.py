@@ -388,7 +388,7 @@ class MetadataSynthesizer(object):
                     upd_idx = 0
                     for idx in sort_idx:
                         new_doas[upd_idx] = nth_mixture['doa_azel'][idx].T
-                        new_dist[upd_idx] = nth_mixture['doa_dist'][idx].T
+                        new_dist[upd_idx] = nth_mixture['doa_dist'][idx]
                         new_sample_onoffsets[upd_idx] = nth_mixture['sample_onoffsets'][idx]
                         upd_idx += 1
                     nth_mixture['doa_azel'] = new_doas
@@ -599,7 +599,7 @@ class MetadataSynthesizer(object):
                                 
                                 azim = int(metadata_nm['eventdoatimetracks'][nf,0,active_events][na][0])
                                 elev = int(metadata_nm['eventdoatimetracks'][nf,1,active_events][na][0])
-                                dist = int(metadata_nm['eventdistimetracks'][nf,0,active_events][na][0])
+                                dist = metadata_nm['eventdistimetracks'][nf,0,active_events][na][0]
                                 metadata_writer.writerow([nf,classidx,trackidx,azim,elev,dist])
                     file_id.close()
                                 
