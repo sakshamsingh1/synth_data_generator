@@ -3,6 +3,10 @@ from utils import cart2sph
 import os
 import csv
 
+def get_y(angle,x):
+    angle2 = np.pi-angle-np.pi/2
+    return x * np.sin(angle) / np.sin(angle2)
+
 class MetadataSynthesizer(object):
     def __init__(
             self, db_config, params, scenario_name
@@ -140,10 +144,6 @@ class MetadataSynthesizer(object):
 
                             #print('angle_str', angle_str)
                             #print('angle_end', angle_end)
-
-                            def get_y(angle,x):
-                                angle2 = np.pi-angle-np.pi/2
-                                return x * np.sin(angle) / np.sin(angle2)
 
                             if pse[0,0] < 0: # if on the negative side of x
                                 angles = np.linspace(angle_str, 2*np.pi + angle_end, ndoas)
