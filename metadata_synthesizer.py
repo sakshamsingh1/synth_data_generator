@@ -95,6 +95,7 @@ class MetadataSynthesizer(object):
                 fold_mixture['roomidx'] = rooms_nf
                 nroom = rooms_nf[nr]
                 print('Room {} \n'.format(nroom+1))              
+                print('Room',rirdata2room_measinfo[nroom])              
                 n_traj = np.shape(self._rirdata[rirdata2room_idx[nroom]][0][2])[0] #number of trajectories
                 n_traj_measinfo = np.shape(self._measinfo[rirdata2room_measinfo[nroom]]['distances'])[-1] #number of trajectories
                 assert n_traj == n_traj_measinfo
@@ -124,15 +125,45 @@ class MetadataSynthesizer(object):
                             #print('distance xy:',dist_xy)
                             #print('height delta:',height_delta)
                             #print('distances:',distances)
+                            #print('distances shape:',distances.shape)
+                            #input()
                         else: # assuming it's a straight line
                             pse = self._measinfo[rirdata2room_measinfo[nroom]]['distances'][...,ntraj] # path start and end
                             pse[:,-1] = height_delta
-                            paths = np.array([np.linspace(i,j,ndoas) for i,j in zip(pse[0],pse[1])]).T
-                            distances = np.sqrt(np.sum(np.square(paths),axis=1,keepdims=True))
-                            #print('paths:',paths.shape)
+
+                            
+                            # in this database of IRs, all IRs start with positive y and end with negative y
+
+                            # calculate the angle to the starting point
+                            angle_str = np.arctan2(pse[0,1],pse[0,0])
+                            angle_end = np.arctan2(pse[1,1],pse[1,0])
+
+                            #print('angle_str', angle_str)
+                            #print('angle_end', angle_end)
+
+                            def get_y(angle,x):
+                                angle2 = np.pi-angle-np.pi/2
+                                return x * np.sin(angle) / np.sin(angle2)
+
+                            if pse[0,0] < 0: # if on the negative side of x
+                                angles = np.linspace(angle_str, 2*np.pi + angle_end, ndoas)
+                                
+                                x = np.abs(pse[0,0])
+                                x_y_z = [[-x,get_y(np.pi-a,x),height_delta] if a < np.pi else [-x,-get_y(a-np.pi,x),height_delta] for a in angles] 
+
+                            elif pse[0,0] > 0: # if on the positive side of x
+                                angles = np.linspace(angle_str, angle_end, ndoas)
+                                x = np.abs(pse[0,0])
+                                x_y_z = [[x,get_y(a,x),height_delta] if a > 0 else [x,-get_y(np.abs(a),x),height_delta] for a in angles] 
+                            #print('angles', angles*(180/np.pi))
+                            #for (x,y,z) in x_y_z:
+                            #    print('x_y_z',x,y,z)
+                            distances = np.sqrt(np.sum(np.square(np.array(x_y_z)),axis=1,keepdims=True))
                             #print('distances:',distances)
+                            #print('distances shape:',distances.shape)
                             #print('path start end :', pse)
                             #print('height delta:', height_delta)
+                            #input()
                         #print(doa_xyz)
                         #print('room name:',rirdata2room_measinfo[nroom])
                         #print(self._measinfo[rirdata2room_measinfo[nroom]]['trajectories'][ntraj])
