@@ -125,25 +125,15 @@ class MetadataSynthesizer(object):
                         #print('trajectory_type:',trajectory_type)
                         if trajectory_type == 'circular':
                             dist_xy = self._measinfo[rirdata2room_measinfo[nroom]]['distances'][0,ntraj]
-                            distances = np.sqrt(dist_xy**2 + height_delta**2)*np.ones((ndoas,1)) 
-                            #print('distance xy:',dist_xy)
-                            #print('height delta:',height_delta)
-                            #print('distances:',distances)
-                            #print('distances shape:',distances.shape)
-                            #input()
+                            distances = np.sqrt(dist_xy**2 + height_delta**2)*np.ones((ndoas,1))
                         else: # assuming it's a straight line
                             pse = self._measinfo[rirdata2room_measinfo[nroom]]['distances'][...,ntraj] # path start and end
                             pse[:,-1] = height_delta
-
                             
                             # in this database of IRs, all IRs start with positive y and end with negative y
-
                             # calculate the angle to the starting point
                             angle_str = np.arctan2(pse[0,1],pse[0,0])
                             angle_end = np.arctan2(pse[1,1],pse[1,0])
-
-                            #print('angle_str', angle_str)
-                            #print('angle_end', angle_end)
 
                             if pse[0,0] < 0: # if on the negative side of x
                                 angles = np.linspace(angle_str, 2*np.pi + angle_end, ndoas)
@@ -154,21 +144,9 @@ class MetadataSynthesizer(object):
                             elif pse[0,0] > 0: # if on the positive side of x
                                 angles = np.linspace(angle_str, angle_end, ndoas)
                                 x = np.abs(pse[0,0])
-                                x_y_z = [[x,get_y(a,x),height_delta] if a > 0 else [x,-get_y(np.abs(a),x),height_delta] for a in angles] 
-                            #print('angles', angles*(180/np.pi))
-                            #for (x,y,z) in x_y_z:
-                            #    print('x_y_z',x,y,z)
+                                x_y_z = [[x,get_y(a,x),height_delta] if a > 0 else [x,-get_y(np.abs(a),x),height_delta] for a in angles]
                             distances = np.sqrt(np.sum(np.square(np.array(x_y_z)),axis=1,keepdims=True))
-                            #print('distances:',distances)
-                            #print('distances shape:',distances.shape)
-                            #print('path start end :', pse)
-                            #print('height delta:', height_delta)
-                            #input()
-                        #print(doa_xyz)
-                        #print('room name:',rirdata2room_measinfo[nroom])
-                        #print(self._measinfo[rirdata2room_measinfo[nroom]]['trajectories'][ntraj])
-                        #print(doa_xyz.shape)
-                        #input()
+
                         #   stack all doas of trajectory together
                         #   flip the direction of each second height, so that a
                         #   movement can jump from the lower to the higher smoothly and
